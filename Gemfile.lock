@@ -5,6 +5,8 @@ GEM
     bindata (2.4.15)
     ip2location_ruby (8.7.3)
       bindata (~> 2.4.15)
+    ip2proxy_ruby (3.4.0)
+      bindata (~> 2.4.15)
     mustermann (3.0.3)
       ruby2_keywords (~> 0.0.1)
     nio4r (2.7.4)
@@ -23,8 +25,12 @@ GEM
       tilt (~> 2.0)
     tilt (2.6.0)
 
+PLATFORMS
+  aarch64-linux
+
 DEPENDENCIES
   ip2location_ruby
+  ip2proxy_ruby
   puma
   rubyzip
   sinatra

@@ -1,6 +1,7 @@
 require 'sinatra'
 require 'json'
 require 'ip2location_ruby'
+require 'ip2proxy_ruby'
 require 'open-uri'
 require 'zip'
 require 'fileutils'
@@ -9,9 +10,11 @@ require 'fileutils'
 TOKEN       = ENV['IP2LOCATION_TOKEN'] || 'your_token_here'
 DB11_CODE   = 'DB11LITEBINIPV6'
 ASN_CODE    = 'DBASNLITEBINIPV6'
+PX12_CODE   = 'PX12LITEBIN'
 DB_DIR      = File.expand_path('data', __dir__)
 DB11_FILE   = 'IP2LOCATION-LITE-DB11.IPV6.BIN'
 ASN_FILE    = 'IP2LOCATION-LITE-ASN.IPV6.BIN'
+PX12_FILE   = 'IP2PROXY-LITE-PX12.BIN'
 
 # === DB Download Logic ===
 def download_and_extract(file_code, target_filename)
@@ -51,6 +54,7 @@ configure do
     puts "[INFO] Attempting to download latest IP2Location DBs..."
     download_and_extract(DB11_CODE, DB11_FILE)
     download_and_extract(ASN_CODE, ASN_FILE)
+    download_and_extract(PX12_CODE, PX12_FILE)
     puts "[INFO] Initial DB download complete."
   rescue => e
     puts "[WARN] DB download failed: #{e.message}"
@@ -65,6 +69,7 @@ configure do
         puts "[INFO] Daily DB update starting..."
         download_and_extract(DB11_CODE, DB11_FILE)
         download_and_extract(ASN_CODE, ASN_FILE)
+        download_and_extract(PX12_CODE, PX12_FILE)
         puts "[INFO] Daily DB update completed."
       rescue => e
         puts "[WARN] Daily DB update failed: #{e.message}"
@@ -82,6 +87,10 @@ helpers do
   def ip2location_asn
     Thread.current[:ip2location_asn] ||= Ip2location.new.open(File.join(DB_DIR, ASN_FILE))
   end
+
+  def ip2proxy_px12
+    Thread.current[:ip2proxy_px12] ||= Ip2proxy.new.open(File.join(DB_DIR, PX12_FILE))
+  end
 end
 
 # === Routes ===
@@ -97,6 +106,7 @@ get '/ip/:ip_address' do
 
     record_db11 = ip2location_db11.get_all(ip_address)
     record_asn  = ip2location_asn.get_all(ip_address)
+    record_px12 = ip2proxy_px12.get_all(ip_address)
 
     {
       ip:                  ip_address,
@@ -109,7 +119,11 @@ get '/ip/:ip_address' do
       zipcode:             record_db11['zipcode'],
       timezone:            record_db11['timezone'],
       asn_asn:             "AS#{record_asn['asn']}",
-      asn_name:            record_asn['as']
+      asn_name:            record_asn['as'],
+      is_proxy:            record_px12['is_proxy'] == 1,
+      proxy_type:          record_px12['proxy_type'],
+      threat:              record_px12['threat'],
+      provider:            record_px12['provider']
     }.to_json
   rescue StandardError => e
     status 400
@@ -124,6 +138,7 @@ post '/refresh' do
   begin
     download_and_extract(DB11_CODE, DB11_FILE)
     download_and_extract(ASN_CODE, ASN_FILE)
+    download_and_extract(PX12_CODE, PX12_FILE)
     { message: 'Database refreshed successfully' }.to_json
   rescue => e
     status 500
