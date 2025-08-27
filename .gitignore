@@ -34,8 +34,5 @@ Thumbs.db
 # RubyMine
 /.idea
 
-# Docker
-.dockerignore
-
 # Claude Code
 CLAUDE.md
